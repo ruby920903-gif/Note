@@ -1,0 +1,2049 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日日甜心手帳 ‧ 多帳戶資金流向記帳</title>
+  
+  <!-- Google Fonts: 圓潤甜美的日系與中文手帳字型 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kiwi+Maru:wght@300;400;500&family=Noto+Sans+TC:wght@300;400;500;600;700&family=Zen+Maru+Gothic:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome 6 圖示庫 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js 視覺化圖表庫 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Tailwind 擴充少女草莓牛奶調色盤 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Zen Maru Gothic"', '"Noto Sans TC"', 'sans-serif'],
+            serif: ['"Kiwi Maru"', 'serif'],
+          },
+          colors: {
+            // 少女清透粉色系 (Strawberry & Sakura Pastel)
+            sakura: {
+              50: '#FFF7F8',
+              100: '#FFEBF0',
+              200: '#FFD6E0',
+              300: '#FFB8C9',
+              400: '#FF94AE',
+              500: '#FF7092',
+            },
+            peach: {
+              50: '#FFF9F6',
+              100: '#FFEFEA',
+              200: '#FFDCD4',
+              300: '#FFC4B8',
+              400: '#FFA494',
+            },
+            cream: {
+              50: '#FAF8F5',
+              100: '#F5F0EA',
+              200: '#ECE2D8',
+            },
+            mint: {
+              50: '#F3F9F5',
+              100: '#E1F2E6',
+              400: '#7CB98B',
+              500: '#64A674',
+            },
+            lilac: {
+              50: '#FBF5FC',
+              100: '#F4E5F7',
+              300: '#D9B5E3',
+              400: '#BE85CE',
+              500: '#A661BA',
+            },
+            berry: {
+              dark: '#4A2E35',   // 甜美焙茶莓果深灰
+              body: '#6B4750',   // 溫暖可可玫瑰灰
+              muted: '#9E7B84',  // 溫柔豆沙灰
+              light: '#CEB8BE',  // 邊界柔粉灰
+            }
+          },
+          boxShadow: {
+            'sweet': '0 8px 24px -4px rgba(255, 148, 174, 0.18), 0 2px 6px -1px rgba(255, 148, 174, 0.08)',
+            'sweet-lg': '0 16px 36px -6px rgba(255, 148, 174, 0.25)',
+            'card': '0 4px 16px rgba(255, 184, 201, 0.15)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 少女手帳粉嫩質感底紋 */
+    body {
+      background-color: #FFF7F8;
+      background-image: 
+        radial-gradient(#FFCCD5 0.85px, transparent 0.85px),
+        radial-gradient(#FFF7F8 0.85px, #FFF7F8 0.85px);
+      background-size: 26px 26px;
+      background-position: 0 0, 13px 13px;
+      color: #6B4750;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 甜美蕾絲與手帳標籤質感 */
+    .washi-tag {
+      background: linear-gradient(135deg, rgba(255, 214, 224, 0.7), rgba(255, 235, 240, 0.9));
+      border: 1px dashed #FFA494;
+    }
+
+    .view-anim {
+      animation: sweetFade 0.28s ease-out forwards;
+    }
+    @keyframes sweetFade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-sakura-200 selection:text-berry-dark">
+
+  <!-- ==================== 頂部粉嫩手帳封面 Header ==================== -->
+  <header class="w-full pt-5 pb-3 px-4 sm:px-6 max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-2">
+      <!-- 標題與可愛裝飾 (支援自訂手帳名稱) -->
+      <div class="flex items-center space-x-2">
+        <span id="appIconDisplay" class="text-xl sm:text-2xl cursor-pointer hover:scale-110 transition select-none" title="點擊修改手帳圖示與名稱">🍓</span>
+        <div class="flex items-center gap-1.5 group cursor-pointer" id="appTitleContainer" title="點擊自訂手帳名字">
+          <h1 id="appTitleDisplay" class="text-xl sm:text-2xl font-bold tracking-wider text-berry-dark font-serif flex items-center gap-1.5 transition group-hover:text-sakura-500">
+            日日甜心手帳
+          </h1>
+          <button id="editTitlePencilBtn" type="button" class="w-6 h-6 rounded-full bg-white/90 hover:bg-sakura-100 text-berry-muted hover:text-sakura-500 border border-sakura-200 flex items-center justify-center text-[10px] transition shadow-xs" title="自訂手帳名稱">
+            <i class="fa-solid fa-pen"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 月份切換器 -->
+      <div class="flex items-center bg-white/90 backdrop-blur border border-sakura-200 rounded-full px-2 py-1 shadow-sweet">
+        <button id="prevMonthBtn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-sakura-50 text-berry-muted hover:text-berry-dark transition" title="上個月">
+          <i class="fa-solid fa-chevron-left text-xs"></i>
+        </button>
+        <span id="currentMonthLabel" class="text-xs sm:text-sm font-semibold px-2 text-berry-dark">2026年 10月</span>
+        <button id="nextMonthBtn" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-sakura-50 text-berry-muted hover:text-berry-dark transition" title="下個月">
+          <i class="fa-solid fa-chevron-right text-xs"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div class="flex items-center justify-between text-xs text-berry-muted px-1">
+      <p id="appSubtitleDisplay" class="font-serif italic tracking-wider cursor-pointer hover:text-berry-dark transition" title="點擊修改封面座右銘">
+        「理清每一筆零用與調度，給生活滿滿的安全感 🌸」
+      </p>
+      <!-- 分類管理快捷鈕 -->
+      <button id="openCategoryMgrBtn" class="inline-flex items-center space-x-1 px-3 py-1 bg-white/90 hover:bg-sakura-100 text-berry-body border border-sakura-200 rounded-full font-medium transition shadow-sm text-[11px]">
+        <i class="fa-solid fa-tags text-sakura-400"></i>
+        <span>分類管理 🏷️</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主要內容區 -->
+  <main class="w-full max-w-4xl mx-auto px-4 sm:px-6 flex-1 pb-24">
+
+    <!-- ==================== 核心區塊 1：3大金庫帳戶總覽卡片 ==================== -->
+    <section class="mb-5">
+      <div class="flex items-center justify-between mb-2.5 px-1">
+        <h2 class="text-xs font-bold text-berry-dark flex items-center gap-1.5 uppercase tracking-wider">
+          <i class="fa-solid fa-wallet text-sakura-400"></i>
+          我的資產金庫 (錢包與帳戶)
+        </h2>
+        <div class="flex items-center space-x-2">
+          <button id="quickTransferBtn" class="px-3 py-1 bg-gradient-to-r from-lilac-400 to-sakura-400 hover:from-lilac-500 hover:to-sakura-500 text-white rounded-full text-xs font-medium transition shadow-sm flex items-center gap-1">
+            <i class="fa-solid fa-arrow-right-arrow-left text-[10px]"></i>
+            <span>帳戶互轉 🔄</span>
+          </button>
+          <button id="manageAccountsBtn" class="px-2.5 py-1 bg-white hover:bg-sakura-50 text-berry-body border border-sakura-200 rounded-full text-xs transition" title="編輯帳戶名稱與初始金額">
+            <i class="fa-solid fa-gear text-[11px] text-berry-muted"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3 大帳戶即時餘額卡片網格 -->
+      <div id="accountsGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- 由 JS 動態注入 3 大帳戶卡片 -->
+      </div>
+    </section>
+
+    <!-- ==================== 核心區塊 2：當月收支與預算條 ==================== -->
+    <section class="bg-white/90 backdrop-blur-md rounded-3xl p-4 sm:p-5 mb-5 shadow-sweet border border-sakura-100 relative">
+      <div class="grid grid-cols-3 divide-x divide-sakura-100 text-center pb-3 border-b border-sakura-100/70">
+        <div>
+          <span class="text-[11px] text-berry-muted block mb-0.5">當月總支出</span>
+          <span id="monthExpense" class="text-sm sm:text-base font-bold text-sakura-500">NT$ 0</span>
+        </div>
+        <div>
+          <span class="text-[11px] text-berry-muted block mb-0.5">當月總收入</span>
+          <span id="monthIncome" class="text-sm sm:text-base font-bold text-mint-500">NT$ 0</span>
+        </div>
+        <div>
+          <span class="text-[11px] text-berry-muted block mb-0.5">帳戶互轉調度</span>
+          <span id="monthTransfer" class="text-sm sm:text-base font-bold text-lilac-500">NT$ 0</span>
+        </div>
+      </div>
+
+      <!-- 柔和草莓預算跑條 -->
+      <div class="pt-3">
+        <div class="flex items-center justify-between text-xs mb-1.5">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-berry-body font-medium">🌸 每月開銷預算</span>
+            <button id="editBudgetBtn" class="text-sakura-400 hover:text-sakura-500 text-[11px] underline">設定</button>
+          </div>
+          <span id="budgetText" class="text-berry-muted font-medium text-[11px]">剩餘 $0</span>
+        </div>
+        <div class="w-full h-2.5 bg-sakura-50 rounded-full overflow-hidden p-0.5 border border-sakura-200">
+          <div id="budgetProgressBar" class="h-full bg-gradient-to-r from-peach-300 via-sakura-300 to-sakura-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 頁籤導覽 (手帳明細 / 圖表分析 / 備份工具) ==================== -->
+    <div class="flex items-center justify-between mb-4">
+      <div class="inline-flex p-1 bg-white/80 backdrop-blur rounded-2xl border border-sakura-200 space-x-1 shadow-sm">
+        <button id="tabTimeline" class="tab-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition duration-200 bg-sakura-400 text-white shadow-sm">
+          <i class="fa-regular fa-calendar-heart mr-1.5"></i>收支流水帳
+        </button>
+        <button id="tabAnalytics" class="tab-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition duration-200 text-berry-muted hover:text-berry-dark">
+          <i class="fa-solid fa-chart-pie mr-1.5 text-sakura-300"></i>收支圖表
+        </button>
+        <button id="tabSettings" class="tab-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition duration-200 text-berry-muted hover:text-berry-dark">
+          <i class="fa-solid fa-sparkles mr-1.5 text-sakura-300"></i>手帳工具
+        </button>
+      </div>
+
+      <!-- 快速新增紀錄 -->
+      <button id="topAddBtn" class="hidden sm:inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-sakura-100 hover:bg-sakura-200 text-sakura-600 rounded-full text-xs font-semibold transition">
+        <i class="fa-solid fa-plus text-xs"></i>
+        <span>記下一筆</span>
+      </button>
+    </div>
+
+    <!-- ==================== TAB 1: 收支流水帳時間軸 (含帳本篩選) ==================== -->
+    <div id="viewTimeline" class="view-anim space-y-4">
+      
+      <!-- 帳戶篩選膠囊 (讓使用者可以切換單獨帳本或看全部) -->
+      <div class="flex items-center justify-between flex-wrap gap-2 pb-1">
+        <!-- 帳本過濾選單 -->
+        <div class="flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5" id="accountFilterContainer">
+          <!-- JS 動態生成 [全部帳本] [薪轉戶] [數位存簿] [零用包] -->
+        </div>
+
+        <!-- 類型過濾 (全部 / 支出 / 收入 / 互轉) -->
+        <div class="flex items-center space-x-1 text-xs">
+          <button class="type-filter-btn active px-2.5 py-1 rounded-full bg-berry-dark text-white font-medium text-[11px]" data-type="all">全部</button>
+          <button class="type-filter-btn px-2.5 py-1 rounded-full bg-white text-berry-muted hover:text-berry-dark border border-sakura-200 text-[11px]" data-type="expense">支出 💸</button>
+          <button class="type-filter-btn px-2.5 py-1 rounded-full bg-white text-berry-muted hover:text-berry-dark border border-sakura-200 text-[11px]" data-type="income">收入 💰</button>
+          <button class="type-filter-btn px-2.5 py-1 rounded-full bg-white text-berry-muted hover:text-berry-dark border border-sakura-200 text-[11px]" data-type="transfer">互轉 🔄</button>
+        </div>
+      </div>
+
+      <!-- 搜尋備忘列 -->
+      <div class="relative w-full">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-berry-light text-xs"></i>
+        <input id="searchInput" type="text" placeholder="搜尋備註關鍵字、帳戶名稱或分類..." class="w-full bg-white text-xs pl-9 pr-3 py-2 rounded-2xl border border-sakura-200 focus:outline-none focus:border-sakura-400 text-berry-dark placeholder:text-berry-light transition shadow-sm">
+      </div>
+
+      <!-- 交易紀錄時間軸列表 -->
+      <div id="timelineContainer" class="space-y-4">
+        <!-- 由 JS 動態注入各日期分組紀錄 -->
+      </div>
+
+      <!-- 空白狀態 -->
+      <div id="emptyTimeline" class="hidden text-center py-14 px-4 bg-white/60 rounded-3xl border border-dashed border-sakura-300">
+        <div class="w-14 h-14 rounded-full bg-sakura-100 flex items-center justify-center mx-auto mb-2 text-sakura-400 text-2xl">
+          <i class="fa-regular fa-heart"></i>
+        </div>
+        <p class="text-berry-dark font-medium text-sm mb-1">這個月還沒有相關手帳紀錄唷</p>
+        <p class="text-xs text-berry-muted mb-3">點擊下方「記一筆」，開始記錄每一分金錢的去向吧 ♡</p>
+        <button onclick="openRecordModal()" class="px-4 py-2 bg-sakura-400 hover:bg-sakura-500 text-white rounded-full text-xs font-semibold shadow-sweet transition">
+          + 寫下第一筆生活日記
+        </button>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: 圖表分析 ==================== -->
+    <div id="viewAnalytics" class="view-anim hidden space-y-5">
+      <div class="bg-white/95 backdrop-blur rounded-3xl p-5 shadow-sweet border border-sakura-100">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-bold text-berry-dark flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sakura-400"></span>
+            當月開銷分類佔比
+          </h2>
+          <span id="chartMonthBadge" class="text-xs bg-sakura-100 text-sakura-500 px-2.5 py-0.5 rounded-full font-medium">10月</span>
+        </div>
+
+        <!-- 甜美甜甜圈圓餅圖 -->
+        <div class="relative w-full max-w-[260px] h-[260px] mx-auto mb-4">
+          <canvas id="categoryChart"></canvas>
+          <div id="chartCenterText" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span class="text-[11px] text-berry-muted">當月開銷</span>
+            <span id="chartCenterTotal" class="text-base font-bold text-berry-dark">NT$ 0</span>
+          </div>
+        </div>
+
+        <!-- 排行榜清單 -->
+        <div id="categoryRankList" class="space-y-2 pt-3 border-t border-sakura-100">
+          <!-- JS 渲染佔比條 -->
+        </div>
+      </div>
+
+      <!-- 帳戶資金調度小卡 -->
+      <div class="bg-lilac-50/70 border border-lilac-100 rounded-2xl p-4 flex items-start space-x-3">
+        <div class="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-lilac-400 shrink-0 shadow-sm mt-0.5 text-sm">
+          <i class="fa-solid fa-arrows-split-up-and-left"></i>
+        </div>
+        <div class="text-xs space-y-0.5 flex-1">
+          <p class="font-bold text-berry-dark">帳戶互轉調度溫馨小結</p>
+          <p id="transferSummaryText" class="text-berry-muted leading-relaxed">
+            本月帳戶之間流通調度有序，讓每個存錢罐都能各司其職 🍓
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: 手帳工具與備份 ==================== -->
+    <div id="viewSettings" class="view-anim hidden space-y-4">
+      <div class="bg-white/95 backdrop-blur rounded-3xl p-5 shadow-sweet border border-sakura-100 space-y-5">
+        
+        <!-- 預算設定 -->
+        <div>
+          <h2 class="text-sm font-bold text-berry-dark mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-heart text-sakura-400"></i>每月開銷目標預算
+          </h2>
+          <p class="text-xs text-berry-muted mb-2">設定每月的支出安全水位，隨時掌握剩餘金額。</p>
+          <div class="flex items-center space-x-2">
+            <input id="settingBudgetInput" type="number" min="0" step="1000" class="w-full bg-sakura-50/60 border border-sakura-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+            <button id="saveBudgetBtn" class="px-4 py-2 bg-sakura-400 hover:bg-sakura-500 text-white rounded-xl text-xs font-semibold transition shrink-0">
+              儲存預算
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-sakura-100">
+
+        <!-- 資料備份與匯出 (包含帳戶流向欄位) -->
+        <div>
+          <h2 class="text-sm font-bold text-berry-dark mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-file-export text-sakura-400"></i>手帳資料備份匯出
+          </h2>
+          <p class="text-xs text-berry-muted mb-3">包含完整帳戶、互轉流向與分類資料，支援繁體中文 Excel 防亂碼匯出。</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button id="exportCsvBtn" class="flex items-center justify-center space-x-2 px-3 py-2.5 bg-sakura-50 hover:bg-sakura-100 text-berry-body border border-sakura-200 rounded-xl text-xs font-medium transition">
+              <i class="fa-solid fa-file-csv text-sakura-400 text-sm"></i>
+              <span>匯出手帳 CSV 試算表</span>
+            </button>
+            <button id="exportJsonBtn" class="flex items-center justify-center space-x-2 px-3 py-2.5 bg-sakura-50 hover:bg-sakura-100 text-berry-body border border-sakura-200 rounded-xl text-xs font-medium transition">
+              <i class="fa-solid fa-file-code text-sakura-400 text-sm"></i>
+              <span>匯出 JSON 備份檔</span>
+            </button>
+          </div>
+        </div>
+
+        <hr class="border-sakura-100">
+
+        <!-- 資料重置與示範 -->
+        <div>
+          <h2 class="text-sm font-bold text-berry-dark mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-sakura-400"></i>範例手帳與清空
+          </h2>
+          <div class="flex items-center space-x-2 mt-2">
+            <button id="reloadSampleBtn" class="px-3.5 py-2 bg-sakura-100 hover:bg-sakura-200 text-sakura-600 rounded-xl text-xs font-medium transition">
+              載入示範資料
+            </button>
+            <button id="clearAllBtn" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-500 rounded-xl text-xs font-medium transition border border-rose-200">
+              清空重置手帳
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== 底部固定懸浮快速記帳按鈕 ==================== -->
+  <div class="fixed bottom-5 left-1/2 -translate-x-1/2 z-30 w-[90%] max-w-sm">
+    <button onclick="openRecordModal()" class="w-full py-3 rounded-full bg-gradient-to-r from-sakura-400 via-sakura-500 to-peach-400 hover:opacity-95 text-white font-bold text-sm tracking-widest shadow-sweet-lg flex items-center justify-center space-x-2 active:scale-95 transition">
+      <span>🍓</span>
+      <span>記下一筆手帳日常</span>
+      <span>♡</span>
+    </button>
+  </div>
+
+  <!-- ==================== MODAL 1: 新增 / 編輯手帳紀錄 (支援支出、收入、帳戶互轉) ==================== -->
+  <div id="recordModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-berry-dark/35 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-sweet-lg border border-sakura-200 relative transform transition-all duration-200 scale-95 max-h-[92vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="recordModalTitle" class="text-base font-bold text-berry-dark font-serif flex items-center gap-2">
+          <span>🌸</span> 新增日常紀錄
+        </h3>
+        <button onclick="closeRecordModal()" class="w-7 h-7 rounded-full bg-sakura-50 hover:bg-sakura-100 text-berry-muted hover:text-berry-dark flex items-center justify-center transition">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <form id="recordForm" class="space-y-4">
+        <input type="hidden" id="editEntryId" value="">
+
+        <!-- 三分切換：支出 💸 | 收入 💰 | 帳戶互轉 🔄 -->
+        <div class="grid grid-cols-3 gap-1.5 p-1 bg-sakura-50 rounded-2xl border border-sakura-200">
+          <button type="button" class="mode-tab active py-2 rounded-xl text-xs font-bold transition bg-sakura-400 text-white shadow-sm" data-mode="expense">
+            支出 💸
+          </button>
+          <button type="button" class="mode-tab py-2 rounded-xl text-xs font-bold transition text-berry-muted hover:text-berry-dark" data-mode="income">
+            收入 💰
+          </button>
+          <button type="button" class="mode-tab py-2 rounded-xl text-xs font-bold transition text-berry-muted hover:text-berry-dark" data-mode="transfer">
+            互轉 🔄
+          </button>
+        </div>
+
+        <!-- 金額輸入框 -->
+        <div>
+          <label class="block text-xs font-medium text-berry-muted mb-1">金額 (Amount)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-sakura-400">NT$</span>
+            <input id="inputAmount" type="number" min="1" step="any" placeholder="0" required
+              class="w-full bg-sakura-50/50 border border-sakura-200 rounded-2xl pl-14 pr-4 py-3 text-2xl font-bold text-berry-dark focus:outline-none focus:border-sakura-400 transition placeholder:text-berry-light">
+          </div>
+        </div>
+
+        <!-- 【情況 A: 支出 / 收入】使用單一帳戶與分類選擇 -->
+        <div id="standardFields" class="space-y-3.5">
+          <!-- 帳戶選擇 -->
+          <div>
+            <label class="block text-xs font-medium text-berry-muted mb-1">扣款/入帳帳戶</label>
+            <select id="singleAccountSelect" class="w-full bg-sakura-50/50 border border-sakura-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+              <!-- JS 動態填入帳戶選項 -->
+            </select>
+          </div>
+
+          <!-- 分類網格 (可點選) -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="text-xs font-medium text-berry-muted">分類標籤</label>
+              <button type="button" onclick="openCategoryManager()" class="text-[11px] text-sakura-500 hover:underline">
+                自訂分類 ⚙️
+              </button>
+            </div>
+            <div id="modalCategoryGrid" class="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto no-scrollbar p-1">
+              <!-- JS 動態生成目前模式下的分類標籤 -->
+            </div>
+            <input type="hidden" id="selectedCategory" value="">
+          </div>
+        </div>
+
+        <!-- 【情況 B: 帳戶互轉 (Transfer)】轉出與轉入兩大帳戶 -->
+        <div id="transferFields" class="hidden space-y-3 bg-lilac-50/60 p-3.5 rounded-2xl border border-lilac-100">
+          <div class="flex items-center justify-center space-x-2 text-xs font-bold text-lilac-500 mb-1">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>資金調度 ‧ 清楚記錄從哪裡轉去哪裡</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-semibold text-berry-muted mb-1">
+                <i class="fa-solid fa-arrow-up-from-bracket text-sakura-400 mr-1"></i>轉出帳戶 (From)
+              </label>
+              <select id="transferFromSelect" class="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-lilac-400">
+                <!-- JS 動態選項 -->
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-berry-muted mb-1">
+                <i class="fa-solid fa-arrow-down-to-bracket text-mint-400 mr-1"></i>轉入帳戶 (To)
+              </label>
+              <select id="transferToSelect" class="w-full bg-white border border-lilac-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-lilac-400">
+                <!-- JS 動態選項 -->
+              </select>
+            </div>
+          </div>
+          <p id="transferWarning" class="text-[11px] text-rose-500 hidden text-center">⚠️ 轉出與轉入帳戶不能相同唷！</p>
+        </div>
+
+        <!-- 日期與備註筆記 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-berry-muted mb-1">日期</label>
+            <input id="inputDate" type="date" required class="w-full bg-sakura-50/50 border border-sakura-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-berry-muted mb-1">手帳小筆記 / 備忘</label>
+            <input id="inputNote" type="text" placeholder="例如：生活費提領、發薪轉存、下午茶 🍰" class="w-full bg-sakura-50/50 border border-sakura-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-2xl bg-sakura-400 hover:bg-sakura-500 text-white font-bold text-sm transition shadow-sweet flex items-center justify-center space-x-1.5">
+          <i class="fa-solid fa-check text-xs"></i>
+          <span id="submitBtnText">收錄到手帳 ♡</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 2: 分類管理抽屜 (自訂分類與刪除用不到的分類) ==================== -->
+  <div id="categoryManagerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-berry-dark/35 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-sweet-lg border border-sakura-200 relative transform transition-all duration-200 scale-95 max-h-[92vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-bold text-berry-dark font-serif flex items-center gap-1.5">
+          <span>🏷️</span> 分類管理 (自訂與刪除)
+        </h3>
+        <button onclick="closeCategoryManager()" class="w-7 h-7 rounded-full bg-sakura-50 hover:bg-sakura-100 text-berry-muted flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- 支出 / 收入 分類切換 -->
+      <div class="flex p-1 bg-sakura-50 rounded-2xl border border-sakura-200 mb-4">
+        <button id="catMgrExpenseTab" class="flex-1 py-1.5 rounded-xl text-xs font-bold bg-sakura-400 text-white transition">支出分類 💸</button>
+        <button id="catMgrIncomeTab" class="flex-1 py-1.5 rounded-xl text-xs font-bold text-berry-muted transition">收入分類 💰</button>
+      </div>
+
+      <!-- 現有分類列表 (帶刪除按鈕 ✕) -->
+      <div class="mb-5">
+        <span class="text-xs font-semibold text-berry-muted block mb-2">點擊 ✕ 即可刪除用不到的分類：</span>
+        <div id="categoryTagsContainer" class="flex flex-wrap gap-2">
+          <!-- JS 動態生成可刪除標籤 -->
+        </div>
+      </div>
+
+      <hr class="border-sakura-100 my-4">
+
+      <!-- 新增自訂分類區 -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-berry-dark block">＋ 新增專屬自訂分類</span>
+          <span class="text-[10px] text-sakura-500">可直接打字或選下方圖示 ♡</span>
+        </div>
+        
+        <!-- 輸入自訂圖示與名稱 -->
+        <div class="flex items-center space-x-2">
+          <div class="relative">
+            <input id="newCatIcon" type="text" maxlength="4" value="🍓" 
+              class="w-14 text-center text-xl bg-sakura-50 border border-sakura-200 rounded-xl py-2 text-berry-dark focus:outline-none focus:border-sakura-400 focus:bg-white transition cursor-pointer"
+              title="點此可使用手機鍵盤輸入任何 Emoji">
+            <span class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[9px] text-berry-muted whitespace-nowrap">手機可打字</span>
+          </div>
+          <input id="newCatName" type="text" placeholder="分類名稱 (如：下午茶、盲盒、美甲)" 
+            class="flex-1 bg-sakura-50 border border-sakura-200 rounded-xl px-3 py-2 text-xs text-berry-dark focus:outline-none focus:border-sakura-400 focus:bg-white transition">
+          <button id="addNewCatBtn" class="px-4 py-2 bg-sakura-400 hover:bg-sakura-500 text-white rounded-xl text-xs font-semibold shadow-sm transition shrink-0">
+            新增
+          </button>
+        </div>
+
+        <!-- 擴充精選圖示庫 (分類展示) -->
+        <div class="pt-2">
+          <label class="block text-[11px] text-berry-muted mb-1.5 flex items-center justify-between">
+            <span>✨ 精選推薦圖示 (點擊一鍵帶入)：</span>
+          </label>
+
+          <div class="bg-sakura-50/70 rounded-2xl border border-sakura-200 p-2.5 max-h-48 overflow-y-auto no-scrollbar space-y-2.5">
+            <!-- 甜點與美食飲品 -->
+            <div>
+              <span class="text-[10px] text-berry-muted font-bold block mb-1">🍰 美食、甜點與咖啡手搖</span>
+              <div class="flex flex-wrap gap-1.5 text-base">
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍓</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍰</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧋</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">☕</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍧</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🥐</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🥞</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍙</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍜</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍱</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍣</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍇</span>
+              </div>
+            </div>
+
+            <!-- 美妝、穿搭與香氛 -->
+            <div>
+              <span class="text-[10px] text-berry-muted font-bold block mb-1">💄 美妝保養、穿搭與飾品</span>
+              <div class="flex flex-wrap gap-1.5 text-base">
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💄</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💅</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">👗</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🎀</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🛍️</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💍</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧴</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">👒</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">👠</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🌸</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🌷</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🫧</span>
+              </div>
+            </div>
+
+            <!-- 居家日常、萌寵與植物 -->
+            <div>
+              <span class="text-[10px] text-berry-muted font-bold block mb-1">🐱 居家生活、萌寵與雜貨</span>
+              <div class="flex flex-wrap gap-1.5 text-base">
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🐱</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🐶</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🐰</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🪴</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧺</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🏠</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🕯️</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧼</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧸</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💊</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🩺</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">✨</span>
+              </div>
+            </div>
+
+            <!-- 出遊交通、休閒藝文與理財 -->
+            <div>
+              <span class="text-[10px] text-berry-muted font-bold block mb-1">✈️ 出遊交通、娛樂藝文與理財</span>
+              <div class="flex flex-wrap gap-1.5 text-base">
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🚲</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🚇</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🚗</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">✈️</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🧳</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">📚</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🎨</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🍿</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🎮</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🎵</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💰</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💳</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">📈</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">💼</span>
+                <span class="emoji-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90 transition">🎁</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 3: 帳戶金庫設定 (修改 3 個帳戶名稱或初始餘額) ==================== -->
+  <div id="accountsManagerModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-berry-dark/35 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-sweet-lg border border-sakura-200 relative transform transition-all duration-200 scale-95 max-h-[92vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-berry-dark font-serif flex items-center gap-1.5">
+          <span>🏦</span> 帳戶設定與起始餘額
+        </h3>
+        <button onclick="closeAccountsManager()" class="w-7 h-7 rounded-full bg-sakura-50 hover:bg-sakura-100 text-berry-muted flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+      <p class="text-xs text-berry-muted mb-4">可自由為您的 3 個帳戶命名（例如薪轉戶、數位高利存簿、日常零用錢包），並設定初始金額。</p>
+
+      <div id="accountsEditList" class="space-y-3.5 mb-5">
+        <!-- JS 動態生成編輯帳戶表單 -->
+      </div>
+
+      <div class="flex justify-end space-x-2">
+        <button onclick="closeAccountsManager()" class="px-4 py-2 bg-sakura-50 hover:bg-sakura-100 text-berry-body text-xs rounded-xl transition">
+          取消
+        </button>
+        <button id="saveAccountsSettingBtn" class="px-4 py-2 bg-sakura-400 hover:bg-sakura-500 text-white text-xs font-bold rounded-xl shadow-sweet transition">
+          儲存帳戶設定 ♡
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL 4: 自訂手帳名稱與座右銘 ==================== -->
+  <div id="appTitleModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-berry-dark/35 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-sweet-lg border border-sakura-200 relative transform transition-all duration-200 scale-95 max-h-[92vh] overflow-y-auto no-scrollbar">
+      
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-berry-dark font-serif flex items-center gap-1.5">
+          <span>🎀</span> 自訂手帳名稱與封面
+        </h3>
+        <button onclick="closeAppTitleModal()" class="w-7 h-7 rounded-full bg-sakura-50 hover:bg-sakura-100 text-berry-muted flex items-center justify-center">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+      <p class="text-xs text-berry-muted mb-4 leading-relaxed">為您的記帳小天地取一個專屬名字，讓每一次記帳都像翻開精緻的生活手帳 ♡</p>
+
+      <form id="appTitleForm" class="space-y-4">
+        <!-- 手帳代表 Emoji 圖示 -->
+        <div>
+          <label class="block text-xs font-medium text-berry-muted mb-1.5">手帳封面代表圖示 (Emoji)</label>
+          <div class="flex items-center space-x-2 mb-2">
+            <input id="editAppIcon" type="text" maxlength="4" class="w-12 h-10 text-center text-xl bg-sakura-50 border border-sakura-200 rounded-xl focus:outline-none focus:border-sakura-400" required>
+            <span class="text-[11px] text-berry-muted">點擊下方快速換圖示：</span>
+          </div>
+          <div class="flex flex-wrap gap-1.5 p-2 bg-sakura-50/70 rounded-2xl border border-sakura-200 text-base">
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🍓</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🎀</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🌸</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🍰</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🌷</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🧸</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">🐰</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">☁️</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">☕</span>
+            <span class="app-icon-opt p-1.5 cursor-pointer rounded-lg hover:bg-white active:scale-90">📖</span>
+          </div>
+        </div>
+
+        <!-- 手帳主標題 -->
+        <div>
+          <label class="block text-xs font-medium text-berry-muted mb-1">手帳名字 (App 主標題)</label>
+          <input id="editAppTitle" type="text" maxlength="20" required placeholder="例如：日日甜心手帳、羽柔的櫻花小札" class="w-full bg-sakura-50/60 border border-sakura-200 rounded-xl px-3 py-2.5 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+        </div>
+
+        <!-- 座右銘 / 副標語 -->
+        <div>
+          <label class="block text-xs font-medium text-berry-muted mb-1">封面小語 / 生活座右銘</label>
+          <input id="editAppSubtitle" type="text" maxlength="40" placeholder="例如：記下每一筆用心生活的痕跡 ✨" class="w-full bg-sakura-50/60 border border-sakura-200 rounded-xl px-3 py-2.5 text-xs text-berry-dark focus:outline-none focus:border-sakura-400">
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <button type="button" id="resetAppTitleBtn" class="text-xs text-berry-muted hover:text-sakura-500 underline">
+            恢復預設名字
+          </button>
+          <div class="flex space-x-2">
+            <button type="button" onclick="closeAppTitleModal()" class="px-3.5 py-2 bg-sakura-50 hover:bg-sakura-100 text-berry-body text-xs rounded-xl transition">
+              取消
+            </button>
+            <button type="submit" class="px-4 py-2 bg-sakura-400 hover:bg-sakura-500 text-white text-xs font-bold rounded-xl shadow-sweet transition">
+              儲存手帳名字 ♡
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 自訂溫柔確認視窗 (No alert/confirm) -->
+  <div id="confirmDialog" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-berry-dark/35 backdrop-blur-sm hidden opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-sweet-lg border border-sakura-200 text-center transform scale-95 transition-transform duration-200">
+      <div class="w-12 h-12 rounded-full bg-sakura-100 text-sakura-500 flex items-center justify-center mx-auto mb-3 text-lg">
+        <i class="fa-regular fa-bell"></i>
+      </div>
+      <h4 id="confirmTitle" class="text-sm font-bold text-berry-dark mb-1">確定要執行這項操作嗎？</h4>
+      <p id="confirmMessage" class="text-xs text-berry-muted mb-5 leading-relaxed">請確認您的選擇。</p>
+      <div class="flex items-center space-x-2">
+        <button id="cancelConfirmBtn" class="flex-1 py-2 rounded-xl bg-sakura-50 hover:bg-sakura-100 text-berry-body text-xs font-medium transition">
+          取消保留
+        </button>
+        <button id="acceptConfirmBtn" class="flex-1 py-2 rounded-xl bg-rose-400 hover:bg-rose-500 text-white text-xs font-medium transition shadow-sm">
+          確定執行
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動提示小紙條 Toast -->
+  <div id="toastNotification" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-full bg-berry-dark/90 backdrop-blur text-white text-xs font-medium tracking-wide shadow-sweet transition-all duration-300 opacity-0 translate-y-[-10px] pointer-events-none flex items-center space-x-2">
+    <span id="toastIcon">🌸</span>
+    <span id="toastMessage">已收錄完成</span>
+  </div>
+
+  <!-- ==================== 核心 JavaScript 邏輯 ==================== -->
+  <script>
+    // --- 儲存 Key 宣告 ---
+    const STORAGE_KEY_APP_INFO = 'sweet_journal_app_info_v1';
+    const STORAGE_KEY_RECORDS = 'sweet_journal_records_v1';
+    const STORAGE_KEY_ACCOUNTS = 'sweet_journal_accounts_v1';
+    const STORAGE_KEY_CATEGORIES = 'sweet_journal_categories_v1';
+    const STORAGE_KEY_BUDGET = 'sweet_journal_budget_v1';
+
+    // 預設手帳標題資訊
+    const DEFAULT_APP_INFO = {
+      title: '日日甜心手帳',
+      icon: '🍓',
+      subtitle: '「理清每一筆零用與調度，給生活滿滿的安全感 🌸」'
+    };
+    let appInfo = { ...DEFAULT_APP_INFO };
+
+    // 預設 3 個放錢帳戶（資產帳戶金庫）
+    const DEFAULT_ACCOUNTS = [
+      { id: 'acc_1', name: '薪轉主力戶', icon: '🏦', color: '#FFEBF0', initialBalance: 52000 },
+      { id: 'acc_2', name: '高利數位存簿', icon: '📈', color: '#F4E5F7', initialBalance: 128000 },
+      { id: 'acc_3', name: '零用/LINE Pay', icon: '👛', color: '#FFEFEA', initialBalance: 8600 }
+    ];
+
+    // 預設分類字典（支援自訂與刪除）
+    const DEFAULT_CATEGORIES = {
+      expense: [
+        { id: 'exp_food', name: '美味甜點', icon: '🍰' },
+        { id: 'exp_drink', name: '手搖飲料', icon: '🧋' },
+        { id: 'exp_grocery', name: '日常雜貨', icon: '🍓' },
+        { id: 'exp_cloth', name: '美衣裝飾', icon: '🎀' },
+        { id: 'exp_beauty', name: '彩妝保養', icon: '💄' },
+        { id: 'exp_trans', name: '交通出遊', icon: '🚗' },
+        { id: 'exp_fun', name: '娛樂放鬆', icon: '🍿' },
+        { id: 'exp_other', name: '其他開銷', icon: '🌸' }
+      ],
+      income: [
+        { id: 'inc_salary', name: '薪資入帳', icon: '💼' },
+        { id: 'inc_bonus', name: '兼職獎金', icon: '🎁' },
+        { id: 'inc_invest', name: '理財分紅', icon: '📈' },
+        { id: 'inc_other', name: '零用紅包', icon: '🧧' }
+      ]
+    };
+
+    // 初始甜美手帳示範紀錄（含帳戶互轉示範）
+    const SAMPLE_RECORDS = [
+      {
+        id: 'rec-1',
+        type: 'transfer',
+        amount: 8000,
+        fromAccountId: 'acc_1',
+        toAccountId: 'acc_3',
+        date: getTodayDate(0),
+        note: '轉入本月零用錢與咖啡基金 ☕'
+      },
+      {
+        id: 'rec-2',
+        type: 'expense',
+        amount: 145,
+        accountId: 'acc_3',
+        category: '美味甜點',
+        date: getTodayDate(0),
+        note: '草莓生乳捲佐午後紅茶 🍓'
+      },
+      {
+        id: 'rec-3',
+        type: 'expense',
+        amount: 65,
+        accountId: 'acc_3',
+        category: '手搖飲料',
+        date: getTodayDate(-1),
+        note: '微糖微冰草莓鮮奶 🧋'
+      },
+      {
+        id: 'rec-4',
+        type: 'transfer',
+        amount: 20000,
+        fromAccountId: 'acc_1',
+        toAccountId: 'acc_2',
+        date: getTodayDate(-2),
+        note: '發薪日固定存入高利活存生利息 📈'
+      },
+      {
+        id: 'rec-5',
+        type: 'income',
+        amount: 45000,
+        accountId: 'acc_1',
+        category: '薪資入帳',
+        date: getTodayDate(-3),
+        note: '辛勤工作的甜美果實入帳 🌸'
+      }
+    ];
+
+    // 全域狀態
+    let records = [];
+    let accounts = [];
+    let categories = { expense: [], income: [] };
+    let monthlyBudget = 20000;
+    let selectedDateCursor = new Date();
+    let currentRecordMode = 'expense'; // 'expense' | 'income' | 'transfer'
+    let selectedAccountFilter = 'all'; // 'all' or accountId
+    let selectedTypeFilter = 'all';    // 'all' | 'expense' | 'income' | 'transfer'
+    let currentSearchTerm = '';
+    let categoryChartInstance = null;
+    let pendingConfirmAction = null;
+
+    // 日期小幫手
+    function getTodayDate(offsetDays = 0) {
+      const d = new Date();
+      d.setDate(d.getDate() + offsetDays);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    // --- 初始化 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      loadAllData();
+      setupDateHeaderControls();
+      setupEventListeners();
+      renderApp();
+    });
+
+    // 載入資料
+    function loadAllData() {
+      try {
+        const storedAppInfo = localStorage.getItem(STORAGE_KEY_APP_INFO);
+        appInfo = storedAppInfo ? JSON.parse(storedAppInfo) : { ...DEFAULT_APP_INFO };
+
+        const storedAcc = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+        accounts = storedAcc ? JSON.parse(storedAcc) : [...DEFAULT_ACCOUNTS];
+
+        const storedCat = localStorage.getItem(STORAGE_KEY_CATEGORIES);
+        categories = storedCat ? JSON.parse(storedCat) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+
+        const storedRec = localStorage.getItem(STORAGE_KEY_RECORDS);
+        records = storedRec ? JSON.parse(storedRec) : [...SAMPLE_RECORDS];
+
+        const storedBudget = localStorage.getItem(STORAGE_KEY_BUDGET);
+        if (storedBudget) monthlyBudget = Number(storedBudget);
+      } catch (e) {
+        console.error('Storage parse error:', e);
+        appInfo = { ...DEFAULT_APP_INFO };
+        accounts = [...DEFAULT_ACCOUNTS];
+        categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        records = [...SAMPLE_RECORDS];
+      }
+      saveAllData();
+    }
+
+    function saveAllData() {
+      localStorage.setItem(STORAGE_KEY_APP_INFO, JSON.stringify(appInfo));
+      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(accounts));
+      localStorage.setItem(STORAGE_KEY_CATEGORIES, JSON.stringify(categories));
+      localStorage.setItem(STORAGE_KEY_RECORDS, JSON.stringify(records));
+      localStorage.setItem(STORAGE_KEY_BUDGET, monthlyBudget.toString());
+    }
+
+    // --- 計算各帳戶即時餘額 (精準連動支出、收入與轉出轉入) ---
+    function calculateAccountBalances() {
+      const balances = {};
+      accounts.forEach(acc => {
+        balances[acc.id] = Number(acc.initialBalance) || 0;
+      });
+
+      records.forEach(r => {
+        const amt = Number(r.amount) || 0;
+        if (r.type === 'expense' && balances[r.accountId] !== undefined) {
+          balances[r.accountId] -= amt;
+        } else if (r.type === 'income' && balances[r.accountId] !== undefined) {
+          balances[r.accountId] += amt;
+        } else if (r.type === 'transfer') {
+          if (balances[r.fromAccountId] !== undefined) balances[r.fromAccountId] -= amt;
+          if (balances[r.toAccountId] !== undefined) balances[r.toAccountId] += amt;
+        }
+      });
+
+      return balances;
+    }
+
+    // --- 核心渲染函數 ---
+    function renderApp() {
+      renderAppHeaderInfo();
+      updateMonthDisplay();
+      renderAccountsSection();
+      renderOverviewNumbers();
+      renderAccountFilterPills();
+      renderTimelineRecords();
+      renderAnalyticsChart();
+    }
+
+    // 渲染手帳標題、Icon 與座右銘
+    function renderAppHeaderInfo() {
+      const titleElem = document.getElementById('appTitleDisplay');
+      const iconElem = document.getElementById('appIconDisplay');
+      const subElem = document.getElementById('appSubtitleDisplay');
+
+      const title = appInfo.title || DEFAULT_APP_INFO.title;
+      const icon = appInfo.icon || DEFAULT_APP_INFO.icon;
+      const subtitle = appInfo.subtitle !== undefined ? appInfo.subtitle : DEFAULT_APP_INFO.subtitle;
+
+      if (titleElem) titleElem.textContent = title;
+      if (iconElem) iconElem.textContent = icon;
+      if (subElem) subElem.textContent = subtitle;
+
+      document.title = `${icon} ${title} ‧ 多帳戶資金流向手帳`;
+    }
+
+    function updateMonthDisplay() {
+      const y = selectedDateCursor.getFullYear();
+      const m = selectedDateCursor.getMonth() + 1;
+      document.getElementById('currentMonthLabel').textContent = `${y}年 ${m}月`;
+      document.getElementById('chartMonthBadge').textContent = `${m}月`;
+    }
+
+    // 取得當選定月份之紀錄
+    function getCurrentMonthRecords() {
+      const ym = `${selectedDateCursor.getFullYear()}-${String(selectedDateCursor.getMonth() + 1).padStart(2, '0')}`;
+      return records.filter(r => r.date && r.date.startsWith(ym));
+    }
+
+    // 渲染頂部 3 個帳戶卡片
+    function renderAccountsSection() {
+      const grid = document.getElementById('accountsGrid');
+      grid.innerHTML = '';
+      const balances = calculateAccountBalances();
+
+      accounts.forEach(acc => {
+        const bal = balances[acc.id] || 0;
+        const isCurrentActive = selectedAccountFilter === acc.id;
+
+        const card = document.createElement('div');
+        card.className = `p-3.5 sm:p-4 rounded-3xl border transition duration-200 cursor-pointer relative shadow-sweet ${
+          isCurrentActive ? 'bg-white ring-2 ring-sakura-400 border-sakura-300' : 'bg-white/80 hover:bg-white border-sakura-100'
+        }`;
+        
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <div class="flex items-center space-x-2">
+              <span class="text-lg p-1.5 rounded-xl bg-sakura-50 border border-sakura-100">${acc.icon || '🏦'}</span>
+              <span class="text-xs font-bold text-berry-dark">${escapeHtml(acc.name)}</span>
+            </div>
+            <span class="text-[10px] px-2 py-0.5 rounded-full ${isCurrentActive ? 'bg-sakura-400 text-white' : 'bg-sakura-100 text-sakura-500'}">
+              ${isCurrentActive ? '檢視中' : '帳本'}
+            </span>
+          </div>
+          <div class="pl-1">
+            <span class="text-[10px] text-berry-muted block leading-none mb-0.5">目前餘額</span>
+            <div class="flex items-baseline space-x-1">
+              <span class="text-xs text-sakura-400 font-semibold">NT$</span>
+              <span class="text-base sm:text-lg font-bold text-berry-dark">${bal.toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          // 切換單一帳本或回歸全部
+          if (selectedAccountFilter === acc.id) {
+            selectedAccountFilter = 'all';
+          } else {
+            selectedAccountFilter = acc.id;
+          }
+          renderApp();
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    // 渲染總覽數據與跑條
+    function renderOverviewNumbers() {
+      const monthData = getCurrentMonthRecords();
+      let expenseSum = 0;
+      let incomeSum = 0;
+      let transferSum = 0;
+
+      monthData.forEach(r => {
+        const amt = Number(r.amount) || 0;
+        if (r.type === 'expense') expenseSum += amt;
+        if (r.type === 'income') incomeSum += amt;
+        if (r.type === 'transfer') transferSum += amt;
+      });
+
+      document.getElementById('monthExpense').textContent = `NT$ ${expenseSum.toLocaleString()}`;
+      document.getElementById('monthIncome').textContent = `NT$ ${incomeSum.toLocaleString()}`;
+      document.getElementById('monthTransfer').textContent = `NT$ ${transferSum.toLocaleString()}`;
+
+      // 預算跑條
+      const pct = monthlyBudget > 0 ? Math.min(Math.round((expenseSum / monthlyBudget) * 100), 100) : 0;
+      const remain = monthlyBudget - expenseSum;
+      const bar = document.getElementById('budgetProgressBar');
+      bar.style.width = `${pct}%`;
+
+      const budgetText = document.getElementById('budgetText');
+      if (expenseSum > monthlyBudget && monthlyBudget > 0) {
+        budgetText.textContent = `超支 NT$ ${(expenseSum - monthlyBudget).toLocaleString()} ⚠️`;
+        budgetText.className = 'text-rose-500 font-bold text-[11px]';
+        bar.className = 'h-full bg-rose-400 rounded-full transition-all duration-500';
+      } else {
+        budgetText.textContent = `剩餘 NT$ ${Math.max(remain, 0).toLocaleString()} (已用 ${pct}%)`;
+        budgetText.className = 'text-berry-muted font-medium text-[11px]';
+        bar.className = 'h-full bg-gradient-to-r from-peach-300 via-sakura-300 to-sakura-400 rounded-full transition-all duration-500';
+      }
+    }
+
+    // 渲染手帳流水帳帳本過濾 Pills
+    function renderAccountFilterPills() {
+      const container = document.getElementById('accountFilterContainer');
+      container.innerHTML = '';
+
+      // 全部帳本按鈕
+      const allBtn = document.createElement('button');
+      allBtn.className = `px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+        selectedAccountFilter === 'all'
+          ? 'bg-sakura-400 text-white shadow-sm'
+          : 'bg-white text-berry-body border border-sakura-200 hover:bg-sakura-50'
+      }`;
+      allBtn.innerHTML = `<span>📖 全部帳本綜合</span>`;
+      allBtn.onclick = () => {
+        selectedAccountFilter = 'all';
+        renderApp();
+      };
+      container.appendChild(allBtn);
+
+      // 各帳戶專屬獨立明細按鈕
+      accounts.forEach(acc => {
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition flex items-center space-x-1 ${
+          selectedAccountFilter === acc.id
+            ? 'bg-sakura-400 text-white shadow-sm'
+            : 'bg-white text-berry-body border border-sakura-200 hover:bg-sakura-50'
+        }`;
+        btn.innerHTML = `<span>${acc.icon || '🏦'}</span><span>${escapeHtml(acc.name)}</span>`;
+        btn.onclick = () => {
+          selectedAccountFilter = acc.id;
+          renderApp();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    // 渲染明細時間軸
+    function renderTimelineRecords() {
+      const container = document.getElementById('timelineContainer');
+      const emptyBox = document.getElementById('emptyTimeline');
+      const monthData = getCurrentMonthRecords();
+
+      // 依帳戶與類型過濾
+      let filtered = monthData.filter(r => {
+        // 帳本篩選：如果是互轉，只要 from 或 to 是該帳戶就要顯示！
+        if (selectedAccountFilter !== 'all') {
+          if (r.type === 'transfer') {
+            if (r.fromAccountId !== selectedAccountFilter && r.toAccountId !== selectedAccountFilter) {
+              return false;
+            }
+          } else {
+            if (r.accountId !== selectedAccountFilter) return false;
+          }
+        }
+
+        // 類型篩選 (expense / income / transfer)
+        if (selectedTypeFilter !== 'all' && r.type !== selectedTypeFilter) return false;
+
+        // 搜尋篩選
+        if (currentSearchTerm.trim()) {
+          const kw = currentSearchTerm.toLowerCase();
+          const noteMatch = (r.note || '').toLowerCase().includes(kw);
+          const catMatch = (r.category || '').toLowerCase().includes(kw);
+          const fromAccName = getAccountName(r.fromAccountId).toLowerCase();
+          const toAccName = getAccountName(r.toAccountId).toLowerCase();
+          const accName = getAccountName(r.accountId).toLowerCase();
+          if (!noteMatch && !catMatch && !fromAccName.includes(kw) && !toAccName.includes(kw) && !accName.includes(kw)) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyBox.classList.remove('hidden');
+        return;
+      }
+      emptyBox.classList.add('hidden');
+
+      // 依日期分組降序
+      filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+      const grouped = {};
+      filtered.forEach(item => {
+        if (!grouped[item.date]) grouped[item.date] = [];
+        grouped[item.date].push(item);
+      });
+
+      const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+      let html = '';
+
+      Object.keys(grouped).forEach(dateStr => {
+        const dObj = new Date(dateStr + 'T00:00:00');
+        const m = dObj.getMonth() + 1;
+        const d = dObj.getDate();
+        const wk = weekdays[dObj.getDay()];
+
+        html += `
+          <div class="space-y-2">
+            <div class="flex items-center space-x-2 text-xs font-bold text-berry-dark px-1">
+              <span class="w-2 h-2 rounded-full bg-sakura-300"></span>
+              <span class="font-serif text-sm">${m}月${d}日</span>
+              <span class="text-[11px] font-normal px-2 py-0.5 rounded-full bg-white border border-sakura-100 text-berry-muted">${wk}</span>
+            </div>
+            <div class="space-y-1.5">
+        `;
+
+        grouped[dateStr].forEach(entry => {
+          if (entry.type === 'transfer') {
+            // === 互轉卡片（資金流向清晰呈現）===
+            const fromName = getAccountName(entry.fromAccountId);
+            const toName = getAccountName(entry.toAccountId);
+            html += `
+              <div class="bg-white/90 hover:bg-white rounded-2xl p-3 border border-lilac-200 shadow-sm flex items-center justify-between transition group">
+                <div class="flex items-center space-x-3 min-w-0 pr-2">
+                  <div class="w-10 h-10 rounded-2xl bg-lilac-100 text-lilac-500 flex items-center justify-center shrink-0">
+                    <i class="fa-solid fa-arrows-turn-to-dots text-sm"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center flex-wrap gap-1 mb-0.5">
+                      <span class="text-xs font-bold text-lilac-600 bg-lilac-50 border border-lilac-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span>${escapeHtml(fromName)}</span>
+                        <i class="fa-solid fa-arrow-right-long text-[10px] text-lilac-400"></i>
+                        <span>${escapeHtml(toName)}</span>
+                      </span>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded bg-sakura-50 text-sakura-500">帳戶互轉</span>
+                    </div>
+                    <p class="text-xs text-berry-body truncate font-light">${entry.note ? escapeHtml(entry.note) : '<span class="text-berry-light italic">日常帳戶調度</span>'}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2 shrink-0">
+                  <span class="text-sm sm:text-base font-bold text-lilac-500">
+                    NT$ ${Number(entry.amount).toLocaleString()}
+                  </span>
+                  <div class="flex items-center space-x-0.5">
+                    <button onclick="editRecordItem('${entry.id}')" class="w-7 h-7 rounded-lg hover:bg-sakura-50 text-berry-muted hover:text-sakura-500 flex items-center justify-center transition" title="編輯">
+                      <i class="fa-regular fa-pen-to-square text-xs"></i>
+                    </button>
+                    <button onclick="deleteRecordItem('${entry.id}')" class="w-7 h-7 rounded-lg hover:bg-rose-50 text-berry-muted hover:text-rose-500 flex items-center justify-center transition" title="刪除">
+                      <i class="fa-regular fa-trash-can text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          } else {
+            // === 支出或收入卡片 ===
+            const isExp = entry.type === 'expense';
+            const catObj = getCategoryObj(entry.type, entry.category);
+            const icon = catObj ? catObj.icon : (isExp ? '🍓' : '💰');
+            const accName = getAccountName(entry.accountId);
+
+            html += `
+              <div class="bg-white/90 hover:bg-white rounded-2xl p-3 border border-sakura-100 shadow-sm flex items-center justify-between transition group">
+                <div class="flex items-center space-x-3 min-w-0 pr-2">
+                  <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 text-base ${isExp ? 'bg-sakura-100/70' : 'bg-mint-100/70'}">
+                    ${icon}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center space-x-1.5 mb-0.5">
+                      <span class="text-xs font-bold text-berry-dark">${escapeHtml(entry.category)}</span>
+                      <span class="text-[10px] px-2 py-0.2 rounded-full bg-cream-100 text-berry-muted border border-cream-200">
+                        ${escapeHtml(accName)}
+                      </span>
+                    </div>
+                    <p class="text-xs text-berry-body truncate font-light">${entry.note ? escapeHtml(entry.note) : '<span class="text-berry-light italic">無備註小語</span>'}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center space-x-2 shrink-0">
+                  <span class="text-sm sm:text-base font-bold ${isExp ? 'text-sakura-500' : 'text-mint-500'}">
+                    ${isExp ? '-' : '+'} NT$ ${Number(entry.amount).toLocaleString()}
+                  </span>
+                  <div class="flex items-center space-x-0.5">
+                    <button onclick="editRecordItem('${entry.id}')" class="w-7 h-7 rounded-lg hover:bg-sakura-50 text-berry-muted hover:text-sakura-500 flex items-center justify-center transition" title="編輯">
+                      <i class="fa-regular fa-pen-to-square text-xs"></i>
+                    </button>
+                    <button onclick="deleteRecordItem('${entry.id}')" class="w-7 h-7 rounded-lg hover:bg-rose-50 text-berry-muted hover:text-rose-500 flex items-center justify-center transition" title="刪除">
+                      <i class="fa-regular fa-trash-can text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `;
+          }
+        });
+
+        html += `
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function getAccountName(accId) {
+      const a = accounts.find(x => x.id === accId);
+      return a ? a.name : '未知帳戶';
+    }
+
+    function getCategoryObj(type, name) {
+      const list = categories[type] || [];
+      return list.find(c => c.name === name);
+    }
+
+    // --- 圖表視覺化分析 ---
+    function renderAnalyticsChart() {
+      const monthData = getCurrentMonthRecords().filter(r => r.type === 'expense');
+      const catTotals = {};
+      let totalExp = 0;
+
+      monthData.forEach(r => {
+        const amt = Number(r.amount) || 0;
+        totalExp += amt;
+        catTotals[r.category] = (catTotals[r.category] || 0) + amt;
+      });
+
+      document.getElementById('chartCenterTotal').textContent = `NT$ ${totalExp.toLocaleString()}`;
+
+      const sorted = Object.keys(catTotals).map(c => ({
+        name: c,
+        amount: catTotals[c],
+        ratio: totalExp > 0 ? (catTotals[c] / totalExp) : 0
+      })).sort((a, b) => b.amount - a.amount);
+
+      const sweetPastelColors = [
+        '#FF94AE', '#FFA494', '#FFB8C9', '#FFD6E0',
+        '#D9B5E3', '#FFEFEA', '#C8E6C9', '#FFCCBC'
+      ];
+
+      if (categoryChartInstance) categoryChartInstance.destroy();
+      const ctx = document.getElementById('categoryChart').getContext('2d');
+
+      if (sorted.length === 0) {
+        categoryChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: ['本月尚無支出'],
+            datasets: [{ data: [1], backgroundColor: ['#FFEBF0'], borderWidth: 0 }]
+          },
+          options: { cutout: '76%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        });
+      } else {
+        categoryChartInstance = new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: sorted.map(s => s.name),
+            datasets: [{
+              data: sorted.map(s => s.amount),
+              backgroundColor: sorted.map((_, i) => sweetPastelColors[i % sweetPastelColors.length]),
+              borderWidth: 2,
+              borderColor: '#FFFFFF',
+              hoverOffset: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '74%',
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#4A2E35',
+                callbacks: {
+                  label: (ctx) => ` NT$ ${ctx.raw.toLocaleString()} (${((ctx.raw / totalExp) * 100).toFixed(1)}%)`
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // 排行榜列表
+      const rankBox = document.getElementById('categoryRankList');
+      if (sorted.length === 0) {
+        rankBox.innerHTML = '<p class="text-xs text-center text-berry-muted py-3">本月尚未有消費紀錄，保持得非常棒 ♡</p>';
+      } else {
+        let rankHtml = '';
+        sorted.forEach((item, idx) => {
+          const col = sweetPastelColors[idx % sweetPastelColors.length];
+          const pct = (item.ratio * 100).toFixed(1);
+          rankHtml += `
+            <div class="space-y-1">
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2.5 h-2.5 rounded-full" style="background-color: ${col}"></span>
+                  <span class="font-bold text-berry-dark">${escapeHtml(item.name)}</span>
+                </div>
+                <div class="space-x-1">
+                  <span class="font-bold text-berry-dark">NT$ ${item.amount.toLocaleString()}</span>
+                  <span class="text-[10px] text-berry-muted">(${pct}%)</span>
+                </div>
+              </div>
+              <div class="w-full h-1.5 bg-sakura-50 rounded-full overflow-hidden">
+                <div class="h-full rounded-full" style="width: ${pct}%; background-color: ${col}"></div>
+              </div>
+            </div>
+          `;
+        });
+        rankBox.innerHTML = rankHtml;
+      }
+
+      // 互轉調度統計文字
+      const monthTransfers = getCurrentMonthRecords().filter(r => r.type === 'transfer');
+      const transferTotal = monthTransfers.reduce((a, c) => a + (Number(c.amount) || 0), 0);
+      const summaryText = document.getElementById('transferSummaryText');
+      if (monthTransfers.length > 0) {
+        summaryText.textContent = `這個月總共進行了 ${monthTransfers.length} 次資金互轉調度，累計挪動 NT$ ${transferTotal.toLocaleString()}。金流清楚掌握，絕不漏拍！`;
+      } else {
+        summaryText.textContent = `本月三個帳戶皆各守本位，目前尚無資金互轉紀錄。`;
+      }
+    }
+
+    // --- 新增 / 編輯手帳紀錄彈窗邏輯 ---
+    function openRecordModal(editData = null, defaultMode = 'expense') {
+      const modal = document.getElementById('recordModal');
+      const form = document.getElementById('recordForm');
+      form.reset();
+
+      // 填入帳戶下拉選單
+      populateAccountDropdowns();
+
+      if (editData) {
+        document.getElementById('recordModalTitle').innerHTML = `<span>✏️</span> 編輯日常手帳`;
+        document.getElementById('submitBtnText').textContent = `儲存修改 ♡`;
+        document.getElementById('editEntryId').value = editData.id;
+        document.getElementById('inputAmount').value = editData.amount;
+        document.getElementById('inputDate').value = editData.date;
+        document.getElementById('inputNote').value = editData.note || '';
+
+        setRecordMode(editData.type);
+        if (editData.type === 'transfer') {
+          document.getElementById('transferFromSelect').value = editData.fromAccountId;
+          document.getElementById('transferToSelect').value = editData.toAccountId;
+        } else {
+          document.getElementById('singleAccountSelect').value = editData.accountId || accounts[0].id;
+          setupModalCategoryGrid(editData.type, editData.category);
+        }
+      } else {
+        document.getElementById('recordModalTitle').innerHTML = `<span>🌸</span> 新增日常紀錄`;
+        document.getElementById('submitBtnText').textContent = `收錄到手帳 ♡`;
+        document.getElementById('editEntryId').value = '';
+        document.getElementById('inputDate').value = getTodayDate(0);
+        setRecordMode(defaultMode);
+      }
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+        document.getElementById('inputAmount').focus();
+      }, 10);
+    }
+
+    function closeRecordModal() {
+      const modal = document.getElementById('recordModal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.remove('scale-100');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function setRecordMode(mode) {
+      currentRecordMode = mode;
+      document.querySelectorAll('.mode-tab').forEach(b => {
+        if (b.dataset.mode === mode) {
+          b.className = 'mode-tab active py-2 rounded-xl text-xs font-bold transition bg-sakura-400 text-white shadow-sm';
+        } else {
+          b.className = 'mode-tab py-2 rounded-xl text-xs font-bold transition text-berry-muted hover:text-berry-dark';
+        }
+      });
+
+      const standardBox = document.getElementById('standardFields');
+      const transferBox = document.getElementById('transferFields');
+
+      if (mode === 'transfer') {
+        standardBox.classList.add('hidden');
+        transferBox.classList.remove('hidden');
+      } else {
+        standardBox.classList.remove('hidden');
+        transferBox.classList.add('hidden');
+        setupModalCategoryGrid(mode);
+      }
+    }
+
+    function populateAccountDropdowns() {
+      const single = document.getElementById('singleAccountSelect');
+      const fromSel = document.getElementById('transferFromSelect');
+      const toSel = document.getElementById('transferToSelect');
+
+      const optionsHtml = accounts.map(a => `<option value="${a.id}">${a.icon} ${escapeHtml(a.name)}</option>`).join('');
+
+      single.innerHTML = optionsHtml;
+      fromSel.innerHTML = optionsHtml;
+      toSel.innerHTML = optionsHtml;
+
+      if (accounts.length >= 2) {
+        toSel.selectedIndex = 1;
+      }
+    }
+
+    function setupModalCategoryGrid(type, selectedCatName = null) {
+      const grid = document.getElementById('modalCategoryGrid');
+      grid.innerHTML = '';
+      const list = categories[type] || [];
+
+      list.forEach((cat, idx) => {
+        const isSelected = selectedCatName ? (cat.name === selectedCatName) : (idx === 0);
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = `cat-chip flex flex-col items-center justify-center p-2 rounded-2xl border transition ${
+          isSelected ? 'bg-sakura-100 border-sakura-400 text-berry-dark ring-2 ring-sakura-300' : 'bg-sakura-50/50 border-sakura-100 text-berry-body hover:bg-white'
+        }`;
+        chip.dataset.name = cat.name;
+        chip.innerHTML = `
+          <span class="text-base mb-0.5">${cat.icon || '🌸'}</span>
+          <span class="text-[11px] font-semibold truncate w-full text-center">${escapeHtml(cat.name)}</span>
+        `;
+        chip.onclick = () => {
+          document.querySelectorAll('.cat-chip').forEach(c => {
+            c.classList.remove('bg-sakura-100', 'border-sakura-400', 'ring-2', 'ring-sakura-300');
+            c.classList.add('bg-sakura-50/50', 'border-sakura-100');
+          });
+          chip.classList.add('bg-sakura-100', 'border-sakura-400', 'ring-2', 'ring-sakura-300');
+          chip.classList.remove('bg-sakura-50/50', 'border-sakura-100');
+          document.getElementById('selectedCategory').value = cat.name;
+        };
+        grid.appendChild(chip);
+      });
+
+      if (list.length > 0) {
+        document.getElementById('selectedCategory').value = selectedCatName || list[0].name;
+      }
+    }
+
+    // --- 分類管理邏輯 (自訂與刪除用不到的分類) ---
+    let catMgrTab = 'expense';
+
+    function openCategoryManager() {
+      const modal = document.getElementById('categoryManagerModal');
+      catMgrTab = 'expense';
+      updateCatMgrView();
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeCategoryManager() {
+      const modal = document.getElementById('categoryManagerModal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.remove('scale-100');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+
+      // 同步刷新記帳彈窗分類網格
+      setupModalCategoryGrid(currentRecordMode);
+      renderApp();
+    }
+
+    function updateCatMgrView() {
+      const expTab = document.getElementById('catMgrExpenseTab');
+      const incTab = document.getElementById('catMgrIncomeTab');
+
+      if (catMgrTab === 'expense') {
+        expTab.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-sakura-400 text-white transition';
+        incTab.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold text-berry-muted transition';
+      } else {
+        incTab.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold bg-sakura-400 text-white transition';
+        expTab.className = 'flex-1 py-1.5 rounded-xl text-xs font-bold text-berry-muted transition';
+      }
+
+      const container = document.getElementById('categoryTagsContainer');
+      container.innerHTML = '';
+      const list = categories[catMgrTab] || [];
+
+      list.forEach(cat => {
+        const tag = document.createElement('div');
+        tag.className = 'inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-sakura-50 border border-sakura-200 text-xs text-berry-dark shadow-sm';
+        tag.innerHTML = `
+          <span>${cat.icon}</span>
+          <span class="font-medium">${escapeHtml(cat.name)}</span>
+          <button type="button" class="del-cat-btn w-4 h-4 ml-1 rounded-full hover:bg-rose-100 text-berry-muted hover:text-rose-500 flex items-center justify-center transition" title="刪除此分類">
+            ✕
+          </button>
+        `;
+        tag.querySelector('.del-cat-btn').onclick = () => {
+          promptDeleteCategory(catMgrTab, cat.id, cat.name);
+        };
+        container.appendChild(tag);
+      });
+    }
+
+    function promptDeleteCategory(type, catId, catName) {
+      showConfirmDialog(
+        `要刪除「${catName}」分類嗎？`,
+        `刪除後未來將無法選取此分類，過往已記錄的明細仍會保留。`,
+        () => {
+          categories[type] = categories[type].filter(c => c.id !== catId);
+          saveAllData();
+          updateCatMgrView();
+          showToast(`已刪除「${catName}」分類 🍃`);
+        }
+      );
+    }
+
+    // --- 帳戶設定 (修改 3 個帳戶名稱或初始餘額) ---
+    function openAccountsManager() {
+      const modal = document.getElementById('accountsManagerModal');
+      const listContainer = document.getElementById('accountsEditList');
+      listContainer.innerHTML = '';
+
+      accounts.forEach((acc, i) => {
+        const row = document.createElement('div');
+        row.className = 'p-3 rounded-2xl bg-sakura-50/60 border border-sakura-200 space-y-2';
+        row.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-berry-dark w-16">帳戶 ${i + 1}</span>
+            <input type="text" class="acc-name-input flex-1 bg-white border border-sakura-200 rounded-xl px-2.5 py-1.5 text-xs text-berry-dark focus:outline-none focus:border-sakura-400" value="${escapeHtml(acc.name)}" placeholder="帳戶名稱">
+            <input type="text" class="acc-icon-input w-12 text-center bg-white border border-sakura-200 rounded-xl px-1 py-1.5 text-xs" value="${acc.icon || '🏦'}" title="圖示 Emoji">
+          </div>
+          <div class="flex items-center space-x-2 pl-16">
+            <span class="text-[11px] text-berry-muted">初始金額 NT$</span>
+            <input type="number" step="100" class="acc-balance-input flex-1 bg-white border border-sakura-200 rounded-xl px-2.5 py-1 text-xs text-berry-dark focus:outline-none focus:border-sakura-400" value="${acc.initialBalance || 0}">
+          </div>
+        `;
+        listContainer.appendChild(row);
+      });
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeAccountsManager() {
+      const modal = document.getElementById('accountsManagerModal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.remove('scale-100');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    // --- 自訂手帳名稱與座右銘 Modal ---
+    function openAppTitleModal() {
+      const modal = document.getElementById('appTitleModal');
+      document.getElementById('editAppTitle').value = appInfo.title || DEFAULT_APP_INFO.title;
+      document.getElementById('editAppIcon').value = appInfo.icon || DEFAULT_APP_INFO.icon;
+      document.getElementById('editAppSubtitle').value = appInfo.subtitle !== undefined ? appInfo.subtitle : DEFAULT_APP_INFO.subtitle;
+
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+        document.getElementById('editAppTitle').focus();
+      }, 10);
+    }
+
+    function closeAppTitleModal() {
+      const modal = document.getElementById('appTitleModal');
+      modal.classList.add('opacity-0');
+      modal.querySelector('.transform').classList.remove('scale-100');
+      modal.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    // --- 事件綁定 ---
+    function setupEventListeners() {
+      // 自訂手帳名稱觸發按鈕
+      document.getElementById('appTitleContainer').addEventListener('click', openAppTitleModal);
+      document.getElementById('appIconDisplay').addEventListener('click', openAppTitleModal);
+      document.getElementById('appSubtitleDisplay').addEventListener('click', openAppTitleModal);
+
+      // 手帳圖示快速點選
+      document.querySelectorAll('.app-icon-opt').forEach(opt => {
+        opt.addEventListener('click', () => {
+          document.getElementById('editAppIcon').value = opt.textContent.trim();
+        });
+      });
+
+      // 恢復預設手帳名字
+      document.getElementById('resetAppTitleBtn').addEventListener('click', () => {
+        document.getElementById('editAppTitle').value = DEFAULT_APP_INFO.title;
+        document.getElementById('editAppIcon').value = DEFAULT_APP_INFO.icon;
+        document.getElementById('editAppSubtitle').value = DEFAULT_APP_INFO.subtitle;
+      });
+
+      // 儲存手帳名稱
+      document.getElementById('appTitleForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newTitle = document.getElementById('editAppTitle').value.trim() || DEFAULT_APP_INFO.title;
+        const newIcon = document.getElementById('editAppIcon').value.trim() || DEFAULT_APP_INFO.icon;
+        const newSubtitle = document.getElementById('editAppSubtitle').value.trim();
+
+        appInfo = {
+          title: newTitle,
+          icon: newIcon,
+          subtitle: newSubtitle
+        };
+
+        saveAllData();
+        renderAppHeaderInfo();
+        closeAppTitleModal();
+        showToast(`手帳已換上新名字「${newTitle}」♡`);
+      });
+
+      // 快速帳戶互轉按鈕
+      document.getElementById('quickTransferBtn').addEventListener('click', () => {
+        openRecordModal(null, 'transfer');
+      });
+
+      // 帳戶管理
+      document.getElementById('manageAccountsBtn').addEventListener('click', openAccountsManager);
+      document.getElementById('openCategoryMgrBtn').addEventListener('click', openCategoryManager);
+      document.getElementById('topAddBtn').addEventListener('click', () => openRecordModal());
+
+      // 儲存帳戶設定
+      document.getElementById('saveAccountsSettingBtn').addEventListener('click', () => {
+        const nameInputs = document.querySelectorAll('.acc-name-input');
+        const iconInputs = document.querySelectorAll('.acc-icon-input');
+        const balInputs = document.querySelectorAll('.acc-balance-input');
+
+        accounts.forEach((acc, i) => {
+          if (nameInputs[i] && nameInputs[i].value.trim()) acc.name = nameInputs[i].value.trim();
+          if (iconInputs[i] && iconInputs[i].value.trim()) acc.icon = iconInputs[i].value.trim();
+          if (balInputs[i]) acc.initialBalance = Number(balInputs[i].value) || 0;
+        });
+
+        saveAllData();
+        closeAccountsManager();
+        renderApp();
+        showToast('帳戶資訊已更新完成 🌸');
+      });
+
+      // 頁籤切換
+      const tabTimeline = document.getElementById('tabTimeline');
+      const tabAnalytics = document.getElementById('tabAnalytics');
+      const tabSettings = document.getElementById('tabSettings');
+      const views = {
+        timeline: document.getElementById('viewTimeline'),
+        analytics: document.getElementById('viewAnalytics'),
+        settings: document.getElementById('viewSettings')
+      };
+
+      function switchTab(btn, targetView) {
+        [tabTimeline, tabAnalytics, tabSettings].forEach(b => {
+          b.className = 'tab-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition duration-200 text-berry-muted hover:text-berry-dark';
+        });
+        btn.className = 'tab-btn px-4 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition duration-200 bg-sakura-400 text-white shadow-sm';
+        Object.values(views).forEach(v => v.classList.add('hidden'));
+        targetView.classList.remove('hidden');
+      }
+
+      tabTimeline.addEventListener('click', () => switchTab(tabTimeline, views.timeline));
+      tabAnalytics.addEventListener('click', () => {
+        switchTab(tabAnalytics, views.analytics);
+        renderAnalyticsChart();
+      });
+      tabSettings.addEventListener('click', () => switchTab(tabSettings, views.settings));
+
+      // 類型過濾按鈕 (全部 / 支出 / 收入 / 互轉)
+      document.querySelectorAll('.type-filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.type-filter-btn').forEach(b => {
+            b.classList.remove('active', 'bg-berry-dark', 'text-white');
+            b.classList.add('bg-white', 'text-berry-muted');
+          });
+          btn.classList.add('active', 'bg-berry-dark', 'text-white');
+          btn.classList.remove('bg-white', 'text-berry-muted');
+          selectedTypeFilter = btn.dataset.type;
+          renderTimelineRecords();
+        });
+      });
+
+      // 搜尋關鍵字
+      document.getElementById('searchInput').addEventListener('input', (e) => {
+        currentSearchTerm = e.target.value;
+        renderTimelineRecords();
+      });
+
+      // 彈窗內模式切換
+      document.querySelectorAll('.mode-tab').forEach(b => {
+        b.addEventListener('click', () => setRecordMode(b.dataset.mode));
+      });
+
+      // 分類管理 Tab 切換
+      document.getElementById('catMgrExpenseTab').addEventListener('click', () => {
+        catMgrTab = 'expense';
+        updateCatMgrView();
+      });
+      document.getElementById('catMgrIncomeTab').addEventListener('click', () => {
+        catMgrTab = 'income';
+        updateCatMgrView();
+      });
+
+      // Emoji 選取
+      document.querySelectorAll('.emoji-opt').forEach(item => {
+        item.addEventListener('click', () => {
+          document.getElementById('newCatIcon').value = item.textContent.trim();
+        });
+      });
+
+      // 新增自訂分類
+      document.getElementById('addNewCatBtn').addEventListener('click', () => {
+        const name = document.getElementById('newCatName').value.trim();
+        let icon = document.getElementById('newCatIcon').value.trim();
+
+        if (!name) {
+          showToast('請輸入分類名稱唷 ♡', 'warning');
+          return;
+        }
+
+        // 若無填寫圖示則預設給草莓或櫻花
+        if (!icon) {
+          icon = catMgrTab === 'expense' ? '🍓' : '💰';
+        }
+
+        const newId = 'cat_' + Date.now();
+        categories[catMgrTab].push({ id: newId, name, icon });
+        saveAllData();
+        document.getElementById('newCatName').value = '';
+        updateCatMgrView();
+        showToast(`已新增分類「${icon} ${name}」✨`);
+      });
+
+      // 記帳 Form 提交
+      document.getElementById('recordForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const editId = document.getElementById('editEntryId').value;
+        const amount = parseFloat(document.getElementById('inputAmount').value);
+        const date = document.getElementById('inputDate').value;
+        const note = document.getElementById('inputNote').value.trim();
+
+        if (isNaN(amount) || amount <= 0) {
+          showToast('請填寫有效金額 🍓', 'warning');
+          return;
+        }
+
+        let recordData = {
+          amount,
+          date,
+          note
+        };
+
+        if (currentRecordMode === 'transfer') {
+          const fromId = document.getElementById('transferFromSelect').value;
+          const toId = document.getElementById('transferToSelect').value;
+          const warningElem = document.getElementById('transferWarning');
+
+          if (fromId === toId) {
+            warningElem.classList.remove('hidden');
+            return;
+          }
+          warningElem.classList.add('hidden');
+
+          recordData.type = 'transfer';
+          recordData.fromAccountId = fromId;
+          recordData.toAccountId = toId;
+        } else {
+          const cat = document.getElementById('selectedCategory').value;
+          const accId = document.getElementById('singleAccountSelect').value;
+          recordData.type = currentRecordMode;
+          recordData.accountId = accId;
+          recordData.category = cat;
+        }
+
+        if (editId) {
+          const idx = records.findIndex(r => r.id === editId);
+          if (idx !== -1) {
+            records[idx] = { id: editId, ...recordData };
+            showToast('手帳紀錄已更新 ♡');
+          }
+        } else {
+          recordData.id = 'rec-' + Date.now();
+          records.unshift(recordData);
+          showToast(currentRecordMode === 'transfer' ? '互轉調度已入帳 🔄' : '日常已溫柔收錄 🌸');
+        }
+
+        saveAllData();
+        closeRecordModal();
+
+        // 自動將游標切至該月份方便查看
+        const dObj = new Date(date + 'T00:00:00');
+        if (dObj.getFullYear() !== selectedDateCursor.getFullYear() || dObj.getMonth() !== selectedDateCursor.getMonth()) {
+          selectedDateCursor = dObj;
+        }
+
+        renderApp();
+      });
+
+      // 預算設定按鈕
+      document.getElementById('editBudgetBtn').addEventListener('click', () => {
+        tabSettings.click();
+        const input = document.getElementById('settingBudgetInput');
+        input.focus();
+      });
+
+      document.getElementById('saveBudgetBtn').addEventListener('click', () => {
+        const val = Number(document.getElementById('settingBudgetInput').value);
+        if (!isNaN(val) && val >= 0) {
+          monthlyBudget = val;
+          saveAllData();
+          renderApp();
+          showToast('開銷預算已設定 🌸');
+        }
+      });
+
+      // 匯出 CSV (含帳戶流向)
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
+      document.getElementById('exportJsonBtn').addEventListener('click', exportJSON);
+
+      // 載入示範資料
+      document.getElementById('reloadSampleBtn').addEventListener('click', () => {
+        showConfirmDialog('載入示範資料？', '這將為您的手帳補充溫柔收支與帳戶互轉範例。', () => {
+          records = [...SAMPLE_RECORDS, ...records];
+          saveAllData();
+          renderApp();
+          showToast('示範資料已就位 📚');
+        });
+      });
+
+      // 清空資料
+      document.getElementById('clearAllBtn').addEventListener('click', () => {
+        showConfirmDialog('確定要清空所有紀錄嗎？', '手帳將翻開全新白紙，所有交易皆會清除。', () => {
+          records = [];
+          saveAllData();
+          renderApp();
+          showToast('已清空，翻開全新篇章 🌱');
+        });
+      });
+
+      // 防呆彈窗按鈕
+      document.getElementById('cancelConfirmBtn').addEventListener('click', closeConfirmDialog);
+      document.getElementById('acceptConfirmBtn').addEventListener('click', () => {
+        if (typeof pendingConfirmAction === 'function') pendingConfirmAction();
+        closeConfirmDialog();
+      });
+    }
+
+    function setupDateHeaderControls() {
+      document.getElementById('prevMonthBtn').addEventListener('click', () => {
+        selectedDateCursor.setMonth(selectedDateCursor.getMonth() - 1);
+        renderApp();
+      });
+      document.getElementById('nextMonthBtn').addEventListener('click', () => {
+        selectedDateCursor.setMonth(selectedDateCursor.getMonth() + 1);
+        renderApp();
+      });
+      document.getElementById('settingBudgetInput').value = monthlyBudget;
+    }
+
+    // --- 編輯與刪除全域觸發 ---
+    window.editRecordItem = function(id) {
+      const item = records.find(r => r.id === id);
+      if (item) openRecordModal(item);
+    };
+
+    window.deleteRecordItem = function(id) {
+      showConfirmDialog('要刪除這筆生活紀錄嗎？', '刪除後相關帳戶餘額將自動連動還原。', () => {
+        records = records.filter(r => r.id !== id);
+        saveAllData();
+        renderApp();
+        showToast('紀錄已輕輕抹去 🍃');
+      });
+    };
+
+    // --- 自訂確認彈窗 ---
+    function showConfirmDialog(title, msg, onConfirm) {
+      pendingConfirmAction = onConfirm;
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = msg;
+
+      const dialog = document.getElementById('confirmDialog');
+      dialog.classList.remove('hidden');
+      setTimeout(() => {
+        dialog.classList.remove('opacity-0');
+        dialog.querySelector('.transform').classList.remove('scale-95');
+        dialog.querySelector('.transform').classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeConfirmDialog() {
+      const dialog = document.getElementById('confirmDialog');
+      dialog.classList.add('opacity-0');
+      dialog.querySelector('.transform').classList.remove('scale-100');
+      dialog.querySelector('.transform').classList.add('scale-95');
+      setTimeout(() => {
+        dialog.classList.add('hidden');
+        pendingConfirmAction = null;
+      }, 200);
+    }
+
+    // --- 浮動通知 Toast ---
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toastNotification');
+      document.getElementById('toastMessage').textContent = msg;
+      document.getElementById('toastIcon').textContent = type === 'warning' ? '☁️' : '🍓';
+
+      toast.classList.remove('opacity-0', 'translate-y-[-10px]');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-[-10px]');
+      }, 2300);
+    }
+
+    // --- 匯出功能 (CSV & JSON) ---
+    function exportCSV() {
+      if (records.length === 0) {
+        showToast('目前尚無資料可匯出', 'warning');
+        return;
+      }
+      let csv = '\uFEFF'; // UTF-8 BOM 防亂碼
+      csv += '日期,類型,金額,分類,所屬帳戶/轉出,轉入帳戶,手帳筆記\n';
+
+      records.forEach(r => {
+        const typeStr = r.type === 'expense' ? '支出' : (r.type === 'income' ? '收入' : '帳戶互轉');
+        const catStr = r.category || '資金互轉';
+        const fromStr = r.type === 'transfer' ? getAccountName(r.fromAccountId) : getAccountName(r.accountId);
+        const toStr = r.type === 'transfer' ? getAccountName(r.toAccountId) : '-';
+        const noteEsc = (r.note || '').replace(/"/g, '""');
+
+        csv += `"${r.date}","${typeStr}","${r.amount}","${catStr}","${fromStr}","${toStr}","${noteEsc}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `甜心手帳_資金流向備份_${getTodayDate(0)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('CSV 試算表已順利匯出 📄');
+    }
+
+    function exportJSON() {
+      const backupData = {
+        app: 'sweet_journal_pro',
+        version: '3.1',
+        exportTime: new Date().toISOString(),
+        appInfo,
+        accounts,
+        categories,
+        budget: monthlyBudget,
+        records
+      };
+
+      const str = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const a = document.createElement('a');
+      a.href = str;
+      a.download = `${appInfo.title || '甜心手帳'}_完整備份_${getTodayDate(0)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      showToast('JSON 完整備份檔已匯出 📦');
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
+```
